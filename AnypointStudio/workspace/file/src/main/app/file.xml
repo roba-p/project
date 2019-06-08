@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+    <flow name="fileFlow">
+        <file:inbound-endpoint path="C:\Flatfile" responseTimeout="10000" doc:name="File"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="cd8a431c-e116-4ae3-951a-0d064178f21c">
+            <dw:input-payload doc:sample="sample_data\excel_2.xlsx" mimeType="application/xlsx"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/xlsx
+---
+{
+	Sheet1: payload.Sheet1 map ((sheet1 , indexOfSheet1) -> {
+		Account: sheet1.Account,
+		"Total Amount": sheet1.Amount
+	})
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <file:outbound-endpoint path="C:\outputFlatfile" responseTimeout="10000" doc:name="File"/>
+    </flow>
+</mule>
