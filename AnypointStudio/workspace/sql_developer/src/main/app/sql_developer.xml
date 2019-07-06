@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:schedulers="http://www.mulesoft.org/schema/mule/schedulers" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
+http://www.mulesoft.org/schema/mule/schedulers http://www.mulesoft.org/schema/mule/schedulers/current/mule-schedulers.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <db:oracle-config name="Oracle_Configuration" host="localhost" port="1521" instance="orcl" user="SYS AS SYSDBA" password="611533Ha" doc:name="Oracle Configuration"/>
+    <sfdc:cached-basic-config name="Salesforce__Basic_Authentication3" username="roba@leka.com" password="611533Ha" securityToken="yifHjX82G4M6iurkptl4dshFr" url="https://login.salesforce.com/services/Soap/u/43.0" doc:name="Salesforce: Basic Authentication"/>
+    <smtp:gmail-connector name="Gmail" validateConnections="true" doc:name="Gmail"/>
+    <smtp:gmail-connector name="Gmail1" validateConnections="true" doc:name="Gmail"/>
+    <flow name="sql_developerFlow" processingStrategy="synchronous">
+        <poll doc:name="Poll">
+            <fixed-frequency-scheduler frequency="5" timeUnit="SECONDS"/>
+            <watermark variable="LastId" default-expression="0" selector="MAX" selector-expression="#[payload.ID]"/>
+            <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        </poll>
+        <flow-ref name="sql_developerFlow1" doc:name="sql_developerFlow1"/>
+        <flow-ref name="sql_developerSub_Flow" doc:name="Flow Reference"/>
+    </flow>
+    <flow name="sql_developerFlow1" processingStrategy="synchronous">
+        <db:select config-ref="Oracle_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[select * From Address where ID > #[flowVars.LastId]]]></db:parameterized-query>
+        </db:select>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	LEGALNAME__c: payload01.FIRST_NAME ++ payload01.LAST_NAME,
+	ADDRESS__c: payload01.ADDRESS,
+	STATE__c: payload01.STATE,
+	COUNTRY_NAME__c: payload01.COUNTRY_NAME,
+	ZIP_CODE__c: payload01.ZIP_CODE,
+	Email__c: payload01.Email
+})]]></dw:set-payload>
+        </dw:transform-message>
+        <sfdc:create config-ref="Salesforce__Basic_Authentication3" type="ADDRESS__c" doc:name="Salesforce">
+            <sfdc:objects ref="#[payload]"/>
+        </sfdc:create>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{	
+    id: payload[0].id,
+    success: payload[0].success
+}]]></dw:set-payload>
+        </dw:transform-message>
+
+    </flow>
+    <sub-flow name="sql_developerSub_Flow">
+        <smtp:outbound-endpoint host="smtp.gmail.com" port="587" user="robagutema@gmail.com" password="611533ha" connector-ref="Gmail1" to="robagutema@gmail.com" from="robagutema@gmail.com" subject="Data Migration complited!" responseTimeout="10000" doc:name="SMTP"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+
+
+</mule>

@@ -1,0 +1,13 @@
+{
+    "inputMessageMetadata": {
+        "flowVariables": {
+            "status": {
+                "connectorName": "Salesforce__Basic_Authentication1",
+                "typeId": "ADDRESS__c"
+            }
+        }
+    },
+    "outputMessageMetadata": {},
+    "id": "5d81da1c-2d10-4e05-a4ca-776e64b4bb26",
+    "version": "5.2.0.0"
+}
